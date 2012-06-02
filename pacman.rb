@@ -1,32 +1,23 @@
+BOARD_SIZE=8
+
 class Vector
-  attr_reader :x,:y
+  attr_reader :x,:y, :direction
 
   def initialize(x,y, direction)
     @x,@y,@direction = x,y,direction
-  end
-
-  def cursor
-    case @direction
-    when :up then "^"
-    when :down then "V"
-    when :left then "<"
-    when :right then ">"
-    else
-      raise "invalid direction: #{@direction}"
-    end
   end
 
   def move(direction)
     $log.puts "[move] #{direction}"
     case direction
     when :up
-      new(@x, (@y - 1) % 3, :up)
+      new(@x, (@y - 1) % BOARD_SIZE, :up)
     when :down
-      new(@x, (@y + 1) % 3, :down)
+      new(@x, (@y + 1) % BOARD_SIZE, :down)
     when :right
-      new((@x + 1) % 3, @y, :right)
+      new((@x + 1) % BOARD_SIZE, @y, :right)
     when :left
-      new((@x - 1) % 3, @y, :left)
+      new((@x - 1) % BOARD_SIZE, @y, :left)
     else
       fail "what is this direction? #{direction}"
     end
@@ -67,6 +58,7 @@ end
 require 'curses'
 class Screen
   include Curses
+
   def initialize
     init_screen
     noecho
@@ -79,11 +71,18 @@ class Screen
   end
 
   def render(history)
-    for i in 0..2
-      for j in 0..2
+    for i in 0..BOARD_SIZE-1
+      for j in 0..BOARD_SIZE-1
         setpos(i,j)
         if history.current.at? j,i
-          addstr history.current.cursor
+          addstr case history.current.direction
+                 when :up then "V"
+                 when :down then "^"
+                 when :left then ">"
+                 when :right then "<"
+                 else
+                   raise "invalid direction: #{@direction}"
+                 end
         elsif history.contains j,i
           addstr " "
         else
@@ -96,10 +95,14 @@ class Screen
 
   def read(history)
     case getch
-    when "A" then history.move :up
-    when "B" then history.move :down
-    when "C" then history.move :right
-    when "D" then history.move :left
+    when "A" then
+      history.move :up if history.current.y != 0
+    when "B" then
+      history.move :down if history.current.y < BOARD_SIZE-1
+    when "C" then
+      history.move :right  if history.current.x < BOARD_SIZE-1
+    when "D" then
+      history.move :left  if history.current.x != 0
     else
       #not an arrow key.
     end
